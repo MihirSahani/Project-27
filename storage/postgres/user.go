@@ -10,8 +10,7 @@ func NewPostgresUserStorageManager() *PostgresUserStorageManager {
 	return &PostgresUserStorageManager{}
 }
 
-type PostgresUserStorageManager struct {
-}
+type PostgresUserStorageManager struct {}
 
 func (p *PostgresUserStorageManager) CreateUser(ctx context.Context, db *sql.Tx, user *entity.User) (*entity.User, error) {
 	query := `

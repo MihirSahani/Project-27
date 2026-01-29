@@ -5,7 +5,6 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-
 func (app *Application) mount() *chi.Mux {
 	router := chi.NewRouter()
 
@@ -14,7 +13,7 @@ func (app *Application) mount() *chi.Mux {
 	router.Use(middleware.Logger)
 	router.Use(middleware.Timeout(app.config.DefaultContextTimeout))
 	router.Use(middleware.Recoverer)
-	
+
 	router.Route("/v1", func(router chi.Router) {
 		router.Get("/healthcheck", app.healthcheckHandler)
 		router.Post("/authenticate", app.authenticationHandler)
@@ -25,13 +24,20 @@ func (app *Application) mount() *chi.Mux {
 				router.Use(app.authentication)
 				router.Delete("/{id}", app.deleteUserHandler)
 			})
-			
+
 			router.Route("/{id}", func(router chi.Router) {
 				router.Use(app.addUserToContext)
 				router.Use(app.authentication)
 				router.Get("/", app.getUserHandler)
 				router.Put("/", app.updateUserHandler)
 			})
+		})
+
+		router.Route("/folder", func(router chi.Router) {
+			router.Use(app.authentication)
+			router.Post("/", app.createFolderHandler)
+			router.Get("/", app.getAllFoldersHandler)
+			router.Delete("/{id}", app.deleteFolderHandler)
 		})
 	})
 	return router

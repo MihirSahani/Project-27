@@ -15,6 +15,7 @@ type StorageManager struct {
 		GetDb() *sql.DB
 
 	}
+
 	UserStorageManager interface {
 		CreateUser(context.Context, *sql.Tx, *entity.User) (*entity.User, error)
 		GetUserByEmail(context.Context, *sql.Tx, string) (*entity.User, error)
@@ -22,6 +23,13 @@ type StorageManager struct {
 		UpdateUser(context.Context, *sql.Tx, *entity.User) (*entity.User, error)
 		DeleteUser(context.Context, *sql.Tx, int64) (*entity.User, error)
 		ActivateUser(context.Context, *sql.Tx, int64) (*entity.User, error)
+	}
+
+	FolderStorageManager interface {
+		CreateFolder(context.Context, *sql.Tx, *entity.Folder) (*entity.Folder, error)
+		DeleteFolder(context.Context, *sql.Tx, int64) (*entity.Folder, error)
+		GetNotesInFolder(context.Context, *sql.Tx, int64) ([]*entity.Note, error)
+		GetAllFolders(context.Context, *sql.Tx, int64) ([]*entity.Folder, error)
 	}
 }
 
@@ -34,6 +42,7 @@ func NewStorageManager() *StorageManager {
 	return &StorageManager{
 		databaseConnection: databaseConnection,
 		UserStorageManager: postgres.NewPostgresUserStorageManager(),
+		FolderStorageManager: postgres.NewPostgresFolderStorageManager(),
 	}
 }
 
