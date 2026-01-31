@@ -1,0 +1,9 @@
+CREATE TABLE  IF NOT EXISTS notes(
+    id SERIAL PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    content TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    user_id SERIAL REFERENCES users(id) ON DELETE SET NULL,
+    folder_id SERIAL REFERENCES folders(id) ON DELETE SET NULL
+);

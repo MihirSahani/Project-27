@@ -9,6 +9,7 @@ import (
 
 	"github.com/MihirSahani/Project-27/internal"
 	"github.com/go-chi/chi/v5"
+	"go.uber.org/zap"
 )
 
 func (app *Application) authentication(next http.Handler) http.Handler {
@@ -24,6 +25,7 @@ func (app *Application) authentication(next http.Handler) http.Handler {
 			return
 		}
 		ctx := context.WithValue(r.Context(),LOGGED_IN_USER_ID, userId)
+		app.logger.Info("Authenticated User", zap.Int64("user_id", userId))
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }

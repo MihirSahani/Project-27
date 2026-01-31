@@ -38,6 +38,15 @@ func (app *Application) mount() *chi.Mux {
 			router.Post("/", app.createFolderHandler)
 			router.Get("/", app.getAllFoldersHandler)
 			router.Delete("/{id}", app.deleteFolderHandler)
+			router.Get("/{id}/notes", app.GetNotesInFolderHandler)
+		})
+
+		router.Route("/note", func(router chi.Router) {
+			router.Use(app.authentication)
+			router.Post("/", app.createNoteHandler)
+			router.Get("/{id}", app.getNoteByIDHandler)
+			router.Put("/{id}", app.updateNoteHandler)
+			router.Delete("/{id}", app.deleteNoteHandler)
 		})
 	})
 	return router

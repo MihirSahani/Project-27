@@ -33,14 +33,20 @@ func (p *PostgresFolderStorageManager) DeleteFolder(ctx context.Context, db *sql
 	query := `
 		DELETE FROM folders
 		WHERE id = $1
-		RETURNING id, name, user_id, created_at, updated_at
 	`
-	folder := &entity.Folder{}
-	err := db.QueryRowContext(ctx, query, id).Scan(&folder.Id, &folder.Name, &folder.UserId, &folder.CreatedAt, &folder.UpdatedAt)
+	result, err := db.ExecContext(ctx, query, id)
 	if err != nil {
 		return nil, err
 	}
-	return folder, nil
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return nil, err
+	}
+	if rowsAffected == 0 {
+		return nil, sql.ErrNoRows
+	}
+
+	return nil, nil
 }
 
 func (p *PostgresFolderStorageManager) GetAllFolders(ctx context.Context, db *sql.Tx, id int64) ([]*entity.Folder, error) {
@@ -72,6 +78,29 @@ func (p *PostgresFolderStorageManager) GetAllFolders(ctx context.Context, db *sq
 	return folders, nil
 }
 
-func (p *PostgresFolderStorageManager) GetNotesInFolder(ctx context.Context, db *sql.Tx, id int64) ([]*entity.Note, error) {
-	return nil, nil
+func (p *PostgresFolderStorageManager) GetNotesInFolder(ctx context.Context, db *sql.Tx, folderId int64, userId int64) ([]*entity.Note, error) {
+	query := `
+		SELECT id, title, updated_at 
+		FROM notes 
+		WHERE folder_id=$1 AND user_id=$2
+	`
+	var notes []*entity.Note
+	rows, err := db.QueryContext(ctx, query, folderId, userId)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		note := entity.Note{}
+		err := rows.Scan(&note.Id, &note.Title, &note.UpdatedAt)
+		if err != nil {
+			return nil, err
+		}
+		notes = append(notes, &note)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return notes, nil
 }

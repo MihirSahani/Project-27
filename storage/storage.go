@@ -8,12 +8,10 @@ import (
 	"github.com/MihirSahani/Project-27/storage/postgres"
 )
 
-
 type StorageManager struct {
 	databaseConnection interface {
 		Close() error
 		GetDb() *sql.DB
-
 	}
 
 	UserStorageManager interface {
@@ -28,8 +26,15 @@ type StorageManager struct {
 	FolderStorageManager interface {
 		CreateFolder(context.Context, *sql.Tx, *entity.Folder) (*entity.Folder, error)
 		DeleteFolder(context.Context, *sql.Tx, int64) (*entity.Folder, error)
-		GetNotesInFolder(context.Context, *sql.Tx, int64) ([]*entity.Note, error)
+		GetNotesInFolder(context.Context, *sql.Tx, int64, int64) ([]*entity.Note, error)
 		GetAllFolders(context.Context, *sql.Tx, int64) ([]*entity.Folder, error)
+	}
+
+	NoteStorageManager interface {
+		CreateNote(context.Context, *sql.Tx, *entity.Note) (*entity.Note, error)
+		DeleteNote(context.Context, *sql.Tx, int64) (*entity.Note, error)
+		GetNoteByID(context.Context, *sql.Tx, int64) (*entity.Note, error)
+		UpdateNote(context.Context, *sql.Tx, *entity.Note) (*entity.Note, error)
 	}
 }
 
@@ -38,11 +43,12 @@ func NewStorageManager() *StorageManager {
 	if err != nil {
 		panic(err)
 	}
-	
+
 	return &StorageManager{
-		databaseConnection: databaseConnection,
-		UserStorageManager: postgres.NewPostgresUserStorageManager(),
+		databaseConnection:   databaseConnection,
+		UserStorageManager:   postgres.NewPostgresUserStorageManager(),
 		FolderStorageManager: postgres.NewPostgresFolderStorageManager(),
+		NoteStorageManager:   postgres.NewPostgresNoteStorageManager(),
 	}
 }
 

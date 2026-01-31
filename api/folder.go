@@ -58,16 +58,26 @@ func (app *Application) deleteFolderHandler(writer http.ResponseWriter, request 
 	// Get folder Id from URL
 	folderId, err := strconv.ParseInt(chi.URLParam(request, "id"), 10, 64)
 	// Write to database
-	folder, err := app.storageManager.WithTx(request.Context(), func(ctx context.Context, tx *sql.Tx) (any, error) {
+	_, err = app.storageManager.WithTx(request.Context(), func(ctx context.Context, tx *sql.Tx) (any, error) {
 		return app.storageManager.FolderStorageManager.DeleteFolder(ctx, tx, folderId)
 	})
 	if err != nil {
 		app.ErrorLogger("Error deleting folder from database", err, http.StatusInternalServerError, writer, ErrorLog)
 	}
-	app.writeJSON(writer, http.StatusNoContent, &folder)
+	app.writeJSON(writer, http.StatusNoContent, nil)
 }
 
-func (app *Application) GetNotesInFolder(writer http.ResponseWriter, request *http.Request) {
-	// TODO: Implement
-	app.writeJSON(writer, http.StatusNotImplemented, nil)
+func (app *Application) GetNotesInFolderHandler(writer http.ResponseWriter, request *http.Request) {
+	// Get folder Id from URL
+	folderId, err := strconv.ParseInt(chi.URLParam(request, "id"), 10, 64)
+	// Writing to database
+	notes, err := app.storageManager.WithTx(request.Context(), func(ctx context.Context, tx *sql.Tx) (any, error) {
+		return app.storageManager.FolderStorageManager.GetNotesInFolder(ctx, tx, folderId, ctx.Value(LOGGED_IN_USER_ID).(int64))
+	})
+	if err != nil {
+		app.ErrorLogger("Error fetching notes from database", err, http.StatusInternalServerError, writer, ErrorLog)
+		return
+	}
+
+	app.writeJSON(writer, http.StatusOK, &notes)
 }

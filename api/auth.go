@@ -20,12 +20,12 @@ func (app *Application) authenticationHandler(writer http.ResponseWriter, reques
 	var payload AuthenticationPayload
 	err := app.readJSON(request, &payload)
 	if err != nil {
-		app.errorJSON(writer, http.StatusBadRequest)
+		app.ErrorLogger("Failed to read JSON payload", err, http.StatusBadRequest, writer, WarnLog)
 		return
 	}
 	// validate the payload
 	if err = internal.Validate.Struct(payload); err != nil {
-		app.errorJSON(writer, http.StatusBadRequest)
+		app.ErrorLogger("Payload validation failed", err, http.StatusBadRequest, writer, WarnLog)
 		return
 	}
 	data, err := app.storageManager.WithTx(request.Context(), func(ctx context.Context, tx *sql.Tx) (any, error) {
