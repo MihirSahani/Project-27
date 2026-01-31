@@ -38,7 +38,7 @@ func (app *Application) mount() *chi.Mux {
 			router.Post("/", app.createFolderHandler)
 			router.Get("/", app.getAllFoldersHandler)
 			router.Delete("/{id}", app.deleteFolderHandler)
-			router.Get("/{id}/notes", app.GetNotesInFolderHandler)
+			router.Get("/{id}/note", app.GetNotesInFolderHandler)
 		})
 
 		router.Route("/note", func(router chi.Router) {
