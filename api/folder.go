@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"net/http"
 	"strconv"
-
 	"github.com/MihirSahani/Project-27/internal"
 	"github.com/MihirSahani/Project-27/storage/entity"
 	"github.com/go-chi/chi/v5"
@@ -30,7 +29,7 @@ func (app *Application) createFolderHandler(writer http.ResponseWriter, request 
 	// Write to database
 	folder, err := app.storageManager.WithTx(request.Context(), func(ctx context.Context, tx *sql.Tx) (any, error) {
 		return app.storageManager.FolderStorageManager.CreateFolder(ctx, tx, &entity.Folder{
-			Name: payload.Name,
+			Name:   payload.Name,
 			UserId: request.Context().Value(LOGGED_IN_USER_ID).(int64),
 		})
 	})
@@ -38,10 +37,19 @@ func (app *Application) createFolderHandler(writer http.ResponseWriter, request 
 		app.ErrorLogger("Failed to write to database", err, http.StatusInternalServerError, writer, ErrorLog)
 		return
 	}
+	// Writing to cache
+	app.cacheManager.SetFolder(folder.(*entity.Folder))
+
 	app.writeJSON(writer, http.StatusCreated, &folder)
 }
 
 func (app *Application) getAllFoldersHandler(writer http.ResponseWriter, request *http.Request) {
+	// Read from cache
+	cachedFolder, err := app.cacheManager.GetAllFolders(request.Context().Value(LOGGED_IN_USER_ID).(int64))
+	if err == nil {
+		app.writeJSON(writer, http.StatusOK, &cachedFolder)
+		return
+	}
 	// Writing to database
 	folders, err := app.storageManager.WithTx(request.Context(), func(ctx context.Context, tx *sql.Tx) (any, error) {
 		return app.storageManager.FolderStorageManager.GetAllFolders(ctx, tx, ctx.Value(LOGGED_IN_USER_ID).(int64))
@@ -50,6 +58,8 @@ func (app *Application) getAllFoldersHandler(writer http.ResponseWriter, request
 		app.ErrorLogger("Error fetching folders from database", err, http.StatusInternalServerError, writer, ErrorLog)
 		return
 	}
+	// Writing to cache
+	app.cacheManager.SetAllFolders(folders.([]*entity.Folder), request.Context().Value(LOGGED_IN_USER_ID).(int64))
 
 	app.writeJSON(writer, http.StatusOK, &folders)
 }
@@ -57,6 +67,10 @@ func (app *Application) getAllFoldersHandler(writer http.ResponseWriter, request
 func (app *Application) deleteFolderHandler(writer http.ResponseWriter, request *http.Request) {
 	// Get folder Id from URL
 	folderId, err := strconv.ParseInt(chi.URLParam(request, "id"), 10, 64)
+	if err != nil {
+		app.ErrorLogger("Invalid folder ID", err, http.StatusBadRequest, writer, WarnLog)
+		return
+	}
 	// Write to database
 	_, err = app.storageManager.WithTx(request.Context(), func(ctx context.Context, tx *sql.Tx) (any, error) {
 		return app.storageManager.FolderStorageManager.DeleteFolder(ctx, tx, folderId)
@@ -64,12 +78,21 @@ func (app *Application) deleteFolderHandler(writer http.ResponseWriter, request 
 	if err != nil {
 		app.ErrorLogger("Error deleting folder from database", err, http.StatusInternalServerError, writer, ErrorLog)
 	}
+	// Remove from cache
+	app.cacheManager.DeleteFolder(folderId)
+
 	app.writeJSON(writer, http.StatusNoContent, nil)
 }
 
 func (app *Application) GetNotesInFolderHandler(writer http.ResponseWriter, request *http.Request) {
 	// Get folder Id from URL
 	folderId, err := strconv.ParseInt(chi.URLParam(request, "id"), 10, 64)
+	// Read from cache
+	cachedNotes, err := app.cacheManager.GetNotesInFolder(folderId)
+	if err == nil {
+		app.writeJSON(writer, http.StatusOK, &cachedNotes)
+		return
+	}
 	// Writing to database
 	notes, err := app.storageManager.WithTx(request.Context(), func(ctx context.Context, tx *sql.Tx) (any, error) {
 		return app.storageManager.FolderStorageManager.GetNotesInFolder(ctx, tx, folderId, ctx.Value(LOGGED_IN_USER_ID).(int64))
@@ -78,6 +101,8 @@ func (app *Application) GetNotesInFolderHandler(writer http.ResponseWriter, requ
 		app.ErrorLogger("Error fetching notes from database", err, http.StatusInternalServerError, writer, ErrorLog)
 		return
 	}
+	// Writing to cache
+	app.cacheManager.SetNotesInFolder(notes.([]*entity.Note))
 
 	app.writeJSON(writer, http.StatusOK, &notes)
 }

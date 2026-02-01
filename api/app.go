@@ -7,6 +7,8 @@ import (
 	"github.com/MihirSahani/Project-27/internal"
 	"github.com/MihirSahani/Project-27/internal/jwt"
 	"github.com/MihirSahani/Project-27/storage"
+	"github.com/MihirSahani/Project-27/storage/cache"
+	"github.com/MihirSahani/Project-27/storage/cache/redis"
 	"go.uber.org/zap"
 )
 
@@ -23,6 +25,7 @@ type Application struct {
 	logger *zap.Logger
 	authenticator internal.Authenticator
 	storageManager *storage.StorageManager
+	cacheManager cache.CacheManager
 }
 
 func NewApp() *Application {
@@ -31,6 +34,7 @@ func NewApp() *Application {
 		logger: NewLogger(),
 		authenticator: jwt.NewJWTAuthenticator(),
 		storageManager: storage.NewStorageManager(),
+		cacheManager: redis.NewRedisCacheManager(),
 	}
 }
 
@@ -68,4 +72,9 @@ func (app *Application) Close() {
 
 	app.logger.Info("Closing Database connection")
 	app.storageManager.Close()
+
+	app.logger.Info("Closing Cache connection")
+	app.cacheManager.Close()
+
+	app.logger.Info("Server closed")
 }

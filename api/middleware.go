@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/MihirSahani/Project-27/internal"
+	"github.com/MihirSahani/Project-27/storage/entity"
 	"github.com/go-chi/chi/v5"
 	"go.uber.org/zap"
 )
@@ -24,7 +25,7 @@ func (app *Application) authentication(next http.Handler) http.Handler {
 			app.errorJSON(w, http.StatusUnauthorized)
 			return
 		}
-		ctx := context.WithValue(r.Context(),LOGGED_IN_USER_ID, userId)
+		ctx := context.WithValue(r.Context(), LOGGED_IN_USER_ID, userId)
 		app.logger.Info("Authenticated User", zap.Int64("user_id", userId))
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
@@ -32,21 +33,30 @@ func (app *Application) authentication(next http.Handler) http.Handler {
 
 func (app *Application) addUserToContext(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		// Get userId from URL
 		userId, err := strconv.ParseInt(chi.URLParam(request, "id"), 10, 64)
 		if err != nil {
 			app.ErrorLogger("Error in string argument", err, http.StatusBadRequest, writer, WarnLog)
 			return
 		}
-		
+		// Read from cache
+		cachedUser, err := app.cacheManager.GetUser(userId)
+		if err == nil {
+			ctx := context.WithValue(request.Context(), ARGUMENTED_USER, cachedUser)
+			next.ServeHTTP(writer, request.WithContext(ctx))
+			return
+		}
+		// Read from database
 		user, err := app.storageManager.WithTx(request.Context(), func(ctx context.Context, tx *sql.Tx) (any, error) {
 			return app.storageManager.UserStorageManager.GetUserByID(ctx, tx, userId)
 		})
-
 		if err != nil {
 			app.ErrorLogger("Failed to get user from database", err, http.StatusInternalServerError, writer, ErrorLog)
 			return
 		}
-		
+		// Write to cache
+		app.cacheManager.SetUser(user.(*entity.User))
+
 		ctx := context.WithValue(request.Context(), ARGUMENTED_USER, user)
 		next.ServeHTTP(writer, request.WithContext(ctx))
 	})
@@ -56,7 +66,7 @@ func getTokenFromHeader(r *http.Request) (string, error) {
 	// Bearer <token>
 	authHeader := r.Header.Get("Authorization")
 	if authHeader == "" {
-		return "", internal.MissingAuthenticationError 
+		return "", internal.MissingAuthenticationError
 	}
 	const prefix = "Bearer "
 	if !strings.HasPrefix(authHeader, prefix) {

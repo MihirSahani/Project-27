@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"net/http"
 	"strconv"
-
 	"github.com/MihirSahani/Project-27/internal"
 	"github.com/MihirSahani/Project-27/storage/entity"
 	"github.com/go-chi/chi/v5"
@@ -22,6 +21,8 @@ func (app *Application) deleteNoteHandler(writer http.ResponseWriter, request *h
 		app.ErrorLogger("Error deleting note from database", err, http.StatusInternalServerError, writer, ErrorLog)
 		return
 	}
+	// Remove from cache
+	app.cacheManager.DeleteNote(noteId)
 
 	app.writeJSON(writer, http.StatusOK, nil)
 }
@@ -29,6 +30,16 @@ func (app *Application) deleteNoteHandler(writer http.ResponseWriter, request *h
 func (app *Application) getNoteByIDHandler(writer http.ResponseWriter, request *http.Request) {
 	// Get note Id from URL
 	noteId, err := strconv.ParseInt(chi.URLParam(request, "id"), 10, 64)
+	if err != nil {
+		app.ErrorLogger("Invalid Notes Id", err, http.StatusBadRequest, writer, WarnLog)
+		return
+	}
+	// Read from cache
+	cachedNote, err := app.cacheManager.GetNote(noteId)
+	if err == nil {
+		app.writeJSON(writer, http.StatusOK, &cachedNote)
+		return
+	}
 	// Writing to database
 	note, err := app.storageManager.WithTx(request.Context(), func(ctx context.Context, tx *sql.Tx) (any, error) {
 		return app.storageManager.NoteStorageManager.GetNoteByID(ctx, tx, noteId)
@@ -37,6 +48,8 @@ func (app *Application) getNoteByIDHandler(writer http.ResponseWriter, request *
 		app.ErrorLogger("Error fetching note from database", err, http.StatusInternalServerError, writer, ErrorLog)
 		return
 	}
+	// Writing to cache
+	app.cacheManager.SetNote(note.(*entity.Note))
 
 	app.writeJSON(writer, http.StatusOK, &note)
 }
@@ -77,6 +90,9 @@ func (app *Application) updateNoteHandler(writer http.ResponseWriter, request *h
 		app.ErrorLogger("Failed to write to database", err, http.StatusInternalServerError, writer, ErrorLog)
 		return
 	}
+	// Write to Cache
+	app.cacheManager.SetNote(note.(*entity.Note))
+
 	app.writeJSON(writer, http.StatusOK, &note)
 }
 
@@ -99,7 +115,6 @@ func (app *Application) createNoteHandler(writer http.ResponseWriter, request *h
 		return
 	}
 
-
 	// Write to database
 	note, err := app.storageManager.WithTx(request.Context(), func(ctx context.Context, tx *sql.Tx) (any, error) {
 		return app.storageManager.NoteStorageManager.CreateNote(ctx, tx, &entity.Note{
@@ -113,5 +128,8 @@ func (app *Application) createNoteHandler(writer http.ResponseWriter, request *h
 		app.ErrorLogger("Failed to write to database", err, http.StatusInternalServerError, writer, ErrorLog)
 		return
 	}
+	// Write to Cache
+	app.cacheManager.SetNote(note.(*entity.Note))
+
 	app.writeJSON(writer, http.StatusCreated, &note)
 }

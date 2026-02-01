@@ -52,11 +52,13 @@ func (app *Application) createUserHandler(w http.ResponseWriter, r *http.Request
 			LastName:  payload.LastName,
 		})
 	})
-
 	if err != nil {
 		app.ErrorLogger("Failed to write to database", err, http.StatusInternalServerError, w, ErrorLog)
 		return
 	}
+	// Writing to cache
+	app.cacheManager.SetUser(user.(*entity.User))
+
 	app.writeJSON(w, http.StatusCreated, &user)
 }
 
@@ -81,6 +83,9 @@ func (app *Application) deleteUserHandler(w http.ResponseWriter, r *http.Request
 		app.ErrorLogger("Failed to delete user from database", err, http.StatusInternalServerError, w, ErrorLog)
 		return
 	}
+	// Delete user from cache
+	app.cacheManager.DeleteUser(userId)
+
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -133,6 +138,9 @@ func (app *Application) updateUserHandler(w http.ResponseWriter, r *http.Request
 		app.ErrorLogger("Error updating user", err, http.StatusInternalServerError, w, ErrorLog)
 		return
 	}
+	// Update the user in cache
+	app.cacheManager.SetUser(originalUser)
+
 	w.WriteHeader(http.StatusCreated)
 }
 
