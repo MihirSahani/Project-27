@@ -51,5 +51,7 @@ func (app *Application) authenticationHandler(writer http.ResponseWriter, reques
 		return
 	}
 
-	app.writeJSON(writer, http.StatusCreated, token)
+	app.writeJSON(writer, http.StatusCreated, map[string]string{
+		"token": token,
+	})
 }

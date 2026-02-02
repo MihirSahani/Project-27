@@ -50,7 +50,12 @@ func (j *JWTAuthenticator) ValidateToken(encryptedToken string) (int64, error) {
 		jwt.WithExpirationRequired(),
 	)
 	if err != nil {
-		return 0, err
+		switch err {
+			case jwt.ErrTokenExpired:
+				return 0, fmt.Errorf("token expired")
+			default:
+				return 0, fmt.Errorf("invalid token")
+		}
 	}
 
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {

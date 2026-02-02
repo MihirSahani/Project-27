@@ -20,6 +20,6 @@ func NewRedisConfig() *RedisConfig {
 		Address: internal.GetEnvAsString("REDIS_ADDRESS", ":6379"),
 		Password: internal.GetEnvAsString("REDIS_PASSWORD", ""),
 		Db: DEFAULT_REDIS_DB,
-		enabled: false,
+		enabled: true,
 	}
 }
